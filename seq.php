@@ -68,6 +68,16 @@ function seq(...$fns)
     return $node;
 }
 
+// app() to apply a command immediately, when result is needed
+function app(callable $fn, string $uuid = null)
+{
+    static $results = [];
+    if (defined('PHPUNIT_DEBUG')) {
+    }
+    // If unit test is def, return pre-baked stuff instead
+    return $fn();
+}
+
 function createSurveyDirectory(string $dir, bool $createSurveyDir)
 {
     // Create the survey directory where the uploaded files can be saved
