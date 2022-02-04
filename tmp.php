@@ -1,7 +1,6 @@
 <?php
 
 $fn = fn () => 123;
-var_dump(&$fn);
 $ref = new ReflectionFunction($fn);
 echo $ref->getStartLine();
 echo $ref->getEndLine();

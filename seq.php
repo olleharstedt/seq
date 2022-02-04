@@ -68,11 +68,42 @@ function seq(...$fns)
     return $node;
 }
 
-// app() to apply a command immediately, when result is needed
-function app(callable $fn, string $uuid = null)
+function getRelativePath($base, $path) {
+	// Detect directory separator
+	$separator = substr($base, 0, 1);
+	$base = array_slice(explode($separator, rtrim($base,$separator)),1);
+	$path = array_slice(explode($separator, rtrim($path,$separator)),1);
+	return implode($separator, array_slice($path, count($base)));
+}
+
+function getFunUuid(callable $fn)
 {
-    static $results = [];
-    if (defined('PHPUNIT_DEBUG')) {
+    $ref = new ReflectionFunction($fn);
+    return $ref->getStartLine() . '_'
+        . $ref->getEndLine() . '_'
+        . getRelativePath(getcwd(), $ref->getFilename());
+}
+
+class ApplyConfiguration
+{
+    public $results = [];
+    public function __construct(array $res)
+    {
+        $this->results = $res;
+    }
+}
+
+// app() to apply a command immediately, when result is needed
+function app(callable|ApplyConfiguration $fn)
+{
+    static $conf;
+    static $i = 0;
+    if (defined('PHPUNIT_DEBUG') && $conf) {
+        return $conf->results[$i++];
+    }
+    if ($fn instanceof ApplyConfiguration) {
+        $conf = $fn;
+        return;
     }
     // If unit test is def, return pre-baked stuff instead
     return $fn();
@@ -91,6 +122,34 @@ function createSurveyDirectory(string $dir, bool $createSurveyDir)
     return true;
 }
 
+function prepareTableDefinition(string $collation, array $fieldMap)
+{
+    foreach ($fieldMap as $row) {
+        $nrOfAnswers = app(fn () => Answer::model()->countByAttributes(array('qid' => $row['qid'])));
+        //$nrOfAnswers = app(new Command("count", fn () => Answer::model()->countByAttributes(array('qid' => $row['qid']))));
+        /*
+        $oQuestionAttribute = app(fn () => QuestionAttribute::model()->find( "qid = :qid AND attribute = 'max_subquestions'", [':qid' => $row['qid']]));
+        if (empty($oQuestionAttribute)) {
+            que(function () use ($row, $nrOfAnswers) {
+                $oQuestionAttribute = new QuestionAttribute();
+                $oQuestionAttribute->qid = $row['qid'];
+                $oQuestionAttribute->attribute = 'max_subquestions';
+                $oQuestionAttribute->value = $nrOfAnswers;
+                $oQuestionAttribute->save();
+            }
+            );
+        } elseif (intval($oQuestionAttribute->value) < 1) {
+            // Fix it if invalid : disallow 0, but need a sub question minimum for EM
+            que(function () use ($oQuestionAttribute, $nrOfAnswers) {
+                $oQuestionAttribute->value = $nrOfAnswers;
+                $oQuestionAttribute->save();
+            }
+            );
+        }
+         */
+    }
+}
+
 /**
  * Example on how to test
  */
@@ -101,3 +160,15 @@ function testCreateSurveyDirectory()
 }
 
 testCreateSurveyDirectory();
+
+define('PHPUNIT_DEBUG', 1);
+
+$conf = new ApplyConfiguration(['moo']);
+app($conf);
+
+prepareTableDefinition(
+    'se',
+    [
+        ['qid' => 1]
+    ]
+);
