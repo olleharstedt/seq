@@ -162,16 +162,19 @@ class DryRunEvaluator implements EvaluatorInterface
                 $this->log[] = "Push thing to stack: " . $node->thing;
                 break;
             case "FileExists":
-                $this->log[] = "File exists";
+                $this->log[] = "File exists: arg1 = " . $node->file;
                 return array_pop($this->returnValues);
             case "FileGetContents":
-                $this->log[] = "File get contents";
+                $this->log[] = "File get contents: arg1 = " . $node->file;
                 return array_pop($this->returnValues);
             case "Set":
                 if ($node->val instanceof Node) {
-                    $node->var = $this->evalNode($node->val);
+                    $val = $this->evalNode($node->val);
+                    $node->var = $val;
+                    $this->log[] = "Set var to: " . $val;
                 } elseif (gettype($node->val) === 'string') {
                     $node->var = $node->val;
+                    $this->log[] = "Set var to: " . $node->val;
                 } else {
                     throw new InvalidArgumentException('Unknown type of val in set: ' . gettype($node->val));
                 }
@@ -183,7 +186,11 @@ class DryRunEvaluator implements EvaluatorInterface
 }
 
 
-class St
+interface St
+{
+}
+
+class St_ implements St
 {
     public $queue = [];
     public $ev;
@@ -329,10 +336,16 @@ function getUpperTextMock(string $file, IO $io)
     return strtoupper($result);
 }
 
-$returnValues = array_reverse([true, 'Some example file content, bla bla bla' ]);
-$st = new St(new DryRunEvaluator($returnValues));
+$returnValues = array_reverse(
+    [
+        true, 'Some example file content, bla bla bla'
+    ]
+);
+$ev = new DryRunEvaluator($returnValues);
+$st = new St_($ev);
 $text = getUpperText('moo.txt', $st);
 var_dump($text);
+var_dump($ev->log);
 
 $io = $this->getMockBuilder()
     ->method('fileExists')
@@ -345,5 +358,10 @@ function testThing()
         ->willReturn(true)
         ->method('fileGetContents')
         ->willReturn('Some test content');
+
+    $observer->expects($this->once())
+             ->method('update')
+             ->with($this->equalTo('something'));
+
     $text = getUpperTextMock('moo.txt', $io);
 }
