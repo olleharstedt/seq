@@ -133,6 +133,11 @@ class DryRunEvaluator implements EvaluatorInterface
     public $log = [];
     public $returnValues = [];
 
+    public function __construct(array $returnValues)
+    {
+        $this->returnValues = $returnValues;
+    }
+
     /**
      * @return mixed
      */
@@ -324,15 +329,21 @@ function getUpperTextMock(string $file, IO $io)
     return strtoupper($result);
 }
 
-$ev = new DryRunEvaluator();
-$ev->returnValues = array_reverse(
-    [
-        false,
-        'Some example file content, bla bla bla'
-    ]
-);
-$st = new St($ev);
-
+$returnValues = array_reverse([true, 'Some example file content, bla bla bla' ]);
+$st = new St(new DryRunEvaluator($returnValues));
 $text = getUpperText('moo.txt', $st);
-var_dump($st->ev->log);
 var_dump($text);
+
+$io = $this->getMockBuilder()
+    ->method('fileExists')
+    ->willReturn(false);
+
+function testThing()
+{
+    $io = $this->getMockBuilder()
+        ->method('fileExists')
+        ->willReturn(true)
+        ->method('fileGetContents')
+        ->willReturn('Some test content');
+    $text = getUpperTextMock('moo.txt', $io);
+}
