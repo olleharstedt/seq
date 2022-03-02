@@ -84,7 +84,7 @@ function getFunUuid(callable $fn)
         . getRelativePath(getcwd(), $ref->getFilename());
 }
 
-class ApplyConfiguration
+class RunMock
 {
     public $results = [];
     public function __construct(array $res)
@@ -93,15 +93,15 @@ class ApplyConfiguration
     }
 }
 
-// app() to apply a command immediately, when result is needed
-function app(callable|ApplyConfiguration $fn)
+// run() to apply a command immediately, when result is needed
+function run(callable|RunMock $fn)
 {
     static $conf;
     static $i = 0;
     if (defined('PHPUNIT_DEBUG') && $conf) {
         return $conf->results[$i++];
     }
-    if ($fn instanceof ApplyConfiguration) {
+    if ($fn instanceof RunMock) {
         $conf = $fn;
         return;
     }
@@ -125,28 +125,30 @@ function createSurveyDirectory(string $dir, bool $createSurveyDir)
 function prepareTableDefinition(string $collation, array $fieldMap)
 {
     foreach ($fieldMap as $row) {
-        $nrOfAnswers = app(fn () => Answer::model()->countByAttributes(array('qid' => $row['qid'])));
-        //$nrOfAnswers = app(new Command("count", fn () => Answer::model()->countByAttributes(array('qid' => $row['qid']))));
-        /*
-        $oQuestionAttribute = app(fn () => QuestionAttribute::model()->find( "qid = :qid AND attribute = 'max_subquestions'", [':qid' => $row['qid']]));
-        if (empty($oQuestionAttribute)) {
-            que(function () use ($row, $nrOfAnswers) {
-                $oQuestionAttribute = new QuestionAttribute();
-                $oQuestionAttribute->qid = $row['qid'];
-                $oQuestionAttribute->attribute = 'max_subquestions';
-                $oQuestionAttribute->value = $nrOfAnswers;
-                $oQuestionAttribute->save();
-            }
-            );
-        } elseif (intval($oQuestionAttribute->value) < 1) {
-            // Fix it if invalid : disallow 0, but need a sub question minimum for EM
-            que(function () use ($oQuestionAttribute, $nrOfAnswers) {
-                $oQuestionAttribute->value = $nrOfAnswers;
-                $oQuestionAttribute->save();
-            }
-            );
-        }
-         */
+        switch ($row['type']) {
+            case "QT_R_RANKING":
+                $nrOfAnswers = run(fn () => Answer::model()->countByAttributes(['qid' => $row['qid']]));
+                /*
+                $oQuestionAttribute = run(fn () => QuestionAttribute::model()->find( "qid = :qid AND attribute = 'max_subquestions'", [':qid' => $row['qid']]));
+                if (empty($oQuestionAttribute)) {
+                    que(function () use ($row, $nrOfAnswers) {
+                        $oQuestionAttribute = new QuestionAttribute();
+                        $oQuestionAttribute->qid = $row['qid'];
+                        $oQuestionAttribute->attribute = 'max_subquestions';
+                        $oQuestionAttribute->value = $nrOfAnswers;
+                        $oQuestionAttribute->save();
+                    }
+                    );
+                } elseif (intval($oQuestionAttribute->value) < 1) {
+                    // Fix it if invalid : disallow 0, but need a sub question minimum for EM
+                    que(function () use ($oQuestionAttribute, $nrOfAnswers) {
+                        $oQuestionAttribute->value = $nrOfAnswers;
+                        $oQuestionAttribute->save();
+                    }
+                    );
+                }
+                 */
+                break;
     }
 }
 
@@ -163,8 +165,7 @@ testCreateSurveyDirectory();
 
 define('PHPUNIT_DEBUG', 1);
 
-$conf = new ApplyConfiguration(['moo']);
-app($conf);
+run(new RunMock(['moo']));
 
 prepareTableDefinition(
     'se',

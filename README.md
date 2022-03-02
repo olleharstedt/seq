@@ -10,14 +10,15 @@ Purpose: Extend the functional core even when side-effects are entangled with bu
 * Usage: `que(fn () => ...)`
 * Whatever is in the queue is executed, in order of definition, at app shutdown
 
-## app
+## run
 
-* `app` is used when you need the result of a side-effect immediately
-* During mocking, you give `app` a configuration object to tell it what to return
+* `run` is used when you need the result of a side-effect immediately
+* During mocking, you give `run` a configuration object to tell it what to return
 
 ## seq
 
 * When a side-effect depends on the result of a previous side-effect, e.g. create file if it doesn't already exist, you can sequence closures together
+* This is like chaining promises together; "do this, then this if success, then this if success"
 
 ## Survey activator
 

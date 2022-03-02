@@ -131,13 +131,15 @@ class NodeEvaluator implements EvaluatorInterface
 class DryRunEvaluator implements EvaluatorInterface
 {
     public $log = [];
+    public $returnValues = [];
 
     /**
      * @return mixed
      */
     public function evalNode($node)
     {
-        switch (get_class_name($node::class)) {
+        $className = get_class_name($node::class);
+        switch ($className) {
             case "If_": 
                 $this->log[] = "Evaluating if";
                 if ($this->evalNode($node->if)) {
@@ -150,11 +152,27 @@ class DryRunEvaluator implements EvaluatorInterface
                 break;
             case "Save":
                 $this->log[] = "Save model";
-                return true;
-                break;
+                return array_pop($this->returnValues);
             case "PushToStack":
                 $this->log[] = "Push thing to stack: " . $node->thing;
                 break;
+            case "FileExists":
+                $this->log[] = "File exists";
+                return array_pop($this->returnValues);
+            case "FileGetContents":
+                $this->log[] = "File get contents";
+                return array_pop($this->returnValues);
+            case "Set":
+                if ($node->val instanceof Node) {
+                    $node->var = $this->evalNode($node->val);
+                } elseif (gettype($node->val) === 'string') {
+                    $node->var = $node->val;
+                } else {
+                    throw new InvalidArgumentException('Unknown type of val in set: ' . gettype($node->val));
+                }
+                break;
+            default:
+                throw new InvalidArgumentException('Unsupported node type: ' . $className);
         }
     }
 }
@@ -297,7 +315,24 @@ function getUpperText(string $file, St $st)
     return strtoupper($result);
 }
 
-$st = new St(new NodeEvaluator());
+function getUpperTextMock(string $file, IO $io)
+{
+    $result = 'DEFAULT';
+    if ($io->fileExists($file)) {
+        $result = $io->fileGetContents($file);
+    }
+    return strtoupper($result);
+}
+
+$ev = new DryRunEvaluator();
+$ev->returnValues = array_reverse(
+    [
+        false,
+        'Some example file content, bla bla bla'
+    ]
+);
+$st = new St($ev);
 
 $text = getUpperText('moo.txt', $st);
+var_dump($st->ev->log);
 var_dump($text);
